@@ -2,7 +2,7 @@
 // 🔗 KONFIGURASI KONSTAN
 // ===========================================================
 const SERVER_URL = "https://finalsmartiot-production.up.railway.app/get_data";
-const PUMP_URL = "https://finalsmartiot-production.up.railway.app//pump";
+const PUMP_URL = "https://finalsmartiot-production.up.railway.app/pump";
 
 const WEATHER_API_KEY = "5389081c78db5308304b01cd0a773e5e";
 const WEATHER_CITY = "Surabaya";
