@@ -256,9 +256,16 @@
 
     <header>
         <div class="menu-toggle" id="menuToggle">☰</div>
-        <h1>🌱 Smart Farming Dashboard (MQTT)</h1>
+        <h1>🌱 Smart IoT Ornamental Plant Watering (MQTT)</h1>
         <p>Realtime IoT • Suhu • Kelembapan • Kontrol Pompa</p>
 
+        <div class="logo-container">
+            <img src="assets/logo-its.png" alt="Logo ITS" class="logo">
+            <img src="assets/logo-instrumentasi.png" alt="Logo Teknik Instrumentasi ITS" class="logo">
+        </div>
+    </header>
+
+    <div class="info-bar">
         <div class="waktu-greeting">
             <span id="realtimeGreeting">Selamat Datang</span>
             <small> | </small>
@@ -274,8 +281,7 @@
                 <option value="green">🌿 Hijau Alam</option>
             </select>
         </div>
-    </header>
-
+    </div>
     <nav class="sidebar" id="sidebar">
         <button class="menu-btn" id="btnDashboard">🏠 Dashboard</button>
         <button class="menu-btn" id="btnDatabase">📊 Database Log</button>
@@ -350,6 +356,26 @@
                 </div>
             </div>
 
+            <div class="card wide">
+                <h3>⏰ Penjadwalan Penyiraman Otomatis</h3>
+
+                <label>Jam Penyiraman:</label>
+                <input type="time" id="scheduleTime" value="10:00" style="width:100%; padding:8px; margin-top:5px;">
+
+                <label style="margin-top:10px; display:block;">Durasi (menit):</label>
+                <input type="number" id="scheduleDuration" value="5" min="1" max="60"
+                    style="width:100%; padding:8px;">
+
+                <button id="saveSchedule" style="margin-top:10px;">💾 Simpan Jadwal</button>
+
+                <small>Pompa akan menyala otomatis sesuai jam yang diatur.</small>
+
+                <p style="margin-top:8px;">
+                    Jadwal Aktif:
+                    <strong><span id="activeSchedule">Belum diatur</span></strong>
+                </p>
+            </div>
+
         </section>
 
         <section class="chart-container">
@@ -360,8 +386,8 @@
         <aside class="side-info">
 
             <div class="card petani">
-                <h3>👨‍🌾 Nama Petani: <span id="namaPetani">Budi</span></h3>
-                <p>Lokasi: Kebun Percobaan • Zona A</p>
+                <h3>👨‍🌾 Nama User: <span id="namaPetani">Bagus&Ziyad</span></h3>
+                <p>Lokasi: Ruangan • Zona A</p>
                 <p>Aktivitas: Penyiraman berkala</p>
 
                 <div class="farm-animation-container">
@@ -423,7 +449,6 @@
 
     <script src="script.js"></script>
 
-    <!-- Tambahan: fungsi load history dari backend /get_history -->
     <script>
         async function loadHistory() {
             try {
