@@ -5,7 +5,7 @@ import paho.mqtt.client as mqtt
 import json
 import threading
 import sqlite3
-from datetime import datetime   # ⬅️ TAMBAHAN (WAJIB)
+from datetime import datetime
 
 # ============================================
 #               FLASK SETUP
@@ -40,7 +40,8 @@ def init_db():
             soil_temp REAL,
             air_temp REAL,
             air_hum REAL,
-            pump_state TEXT
+            pump_state TEXT,
+            mode TEXT
         )
     """)
     conn.commit()
@@ -50,27 +51,23 @@ init_db()
 
 def insert_data_to_db(data):
     try:
-        # ⏰ AMBIL WAKTU SAAT INI
         now = datetime.now()
-        tanggal = now.strftime("%d-%m-%Y")
-        hari = now.strftime("%A")        # Monday, Tuesday, dst
-        waktu = now.strftime("%H:%M:%S")
-
         conn = sqlite3.connect(DB_PATH, timeout=5)
         c = conn.cursor()
         c.execute("""
-            INSERT INTO sensor_log 
-            (tanggal, hari, waktu, moisture, soil_temp, air_temp, air_hum, pump_state)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO sensor_log
+            (tanggal, hari, waktu, moisture, soil_temp, air_temp, air_hum, pump_state, mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            tanggal,
-            hari,
-            waktu,
+            now.strftime("%d-%m-%Y"),
+            now.strftime("%A"),
+            now.strftime("%H:%M:%S"),
             data.get("moisturePercent", 0),
             data.get("soilTemperature", 0.0),
             data.get("suhuUdara", 0.0),
             data.get("kelembapanUdara", 0.0),
-            data.get("pumpState", "Mati")
+            data.get("pumpState", "OFF"),
+            data.get("mode", "MANUAL")
         ))
         conn.commit()
     except Exception as e:
@@ -86,14 +83,16 @@ MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 
 TOPIC_SENSOR = "irigasi/sensor"
-TOPIC_POMPA = "irigasi/pompa"
+TOPIC_POMPA  = "irigasi/pompa"
+TOPIC_MODE   = "irigasi/mode"
 
 sensor_data = {
     "moisturePercent": 0,
     "soilTemperature": 0.0,
     "suhuUdara": 0.0,
     "kelembapanUdara": 0.0,
-    "pumpState": "Mati",
+    "pumpState": "OFF",
+    "mode": "MANUAL",
     "tanggal": "-",
     "hari": "-",
     "waktu": "-"
@@ -109,10 +108,8 @@ def on_message(client, userdata, msg):
         if msg.topic == TOPIC_SENSOR:
             data = json.loads(msg.payload.decode())
             sensor_data.update(data)
-            print("DATA MASUK MQTT:", sensor_data)
-
+            print("DATA MQTT:", sensor_data)
             insert_data_to_db(sensor_data)
-
     except Exception as e:
         print("MQTT ERROR:", e)
 
@@ -121,8 +118,7 @@ mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
-mqtt_thread = threading.Thread(target=mqtt_client.loop_forever, daemon=True)
-mqtt_thread.start()
+threading.Thread(target=mqtt_client.loop_forever, daemon=True).start()
 
 # ============================================
 #               FRONTEND ROUTES
@@ -144,29 +140,26 @@ def serve_static_files(path):
 def get_data():
     return jsonify(sensor_data)
 
-@app.route("/get_history")
-def get_history():
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT * FROM sensor_log ORDER BY id DESC LIMIT 300")
-        rows = c.fetchall()
-        return jsonify(rows)
-    except Exception as e:
-        print("DB ERROR:", e)
-        return jsonify([])
-    finally:
-        conn.close()
-
 @app.route("/pump/<action>")
 def pump(action):
-    if action.lower() == "on":
-        mqtt_client.publish(TOPIC_POMPA, "ON")
-        sensor_data["pumpState"] = "MENYALA 💦"
+    if sensor_data["mode"] == "MANUAL":
+        if action.lower() == "on":
+            mqtt_client.publish(TOPIC_POMPA, "ON")
+            sensor_data["pumpState"] = "ON"
+        elif action.lower() == "off":
+            mqtt_client.publish(TOPIC_POMPA, "OFF")
+            sensor_data["pumpState"] = "OFF"
+    return jsonify(sensor_data)
 
-    elif action.lower() == "off":
-        mqtt_client.publish(TOPIC_POMPA, "OFF")
-        sensor_data["pumpState"] = "MATI"
+@app.route("/mode/<action>")
+def mode(action):
+    if action.lower() == "auto":
+        sensor_data["mode"] = "AUTO"
+        mqtt_client.publish(TOPIC_MODE, "AUTO")
+
+    elif action.lower() == "manual":
+        sensor_data["mode"] = "MANUAL"
+        mqtt_client.publish(TOPIC_MODE, "MANUAL")
 
     return jsonify(sensor_data)
 
@@ -176,5 +169,5 @@ def pump(action):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"RUNNING on port {port}...")
+    print(f"RUNNING on port {port}")
     app.run(host="0.0.0.0", port=port)
